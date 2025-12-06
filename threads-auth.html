@@ -262,6 +262,14 @@
                 <input type="text" id="redirectUri" value="https://hezalel.github.io/threads-auth" placeholder="https://your-domain.com/callback">
             </div>
 
+            <div class="input-group">
+                <label for="scopeType">Permission Scope (try Basic first if getting errors)</label>
+                <select id="scopeType">
+                    <option value="full">Full Threads Permissions (Recommended)</option>
+                    <option value="basic">Basic Pages Only (For Testing)</option>
+                </select>
+            </div>
+
             <div class="warning-box">
                 ⚠️ Make sure this redirect URI is added to your app's <strong>Use Cases → Access the Threads API → Settings → Redirect Callback URLs</strong>: <span class="code">https://hezalel.github.io/threads-auth</span>
             </div>
@@ -346,6 +354,7 @@ curl -X GET "https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_e
         function startAuth() {
             const appId = document.getElementById('appId').value.trim();
             const redirectUri = document.getElementById('redirectUri').value.trim();
+            const scopeType = document.getElementById('scopeType').value;
 
             if (!appId) {
                 showError('Please enter your App ID');
@@ -357,8 +366,10 @@ curl -X GET "https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_e
                 return;
             }
 
-            // Threads API permissions
-            const scopes = 'threads_basic,threads_content_publish,pages_show_list,pages_read_engagement';
+            // Threads API permissions - order matters!
+            const scopes = scopeType === 'basic' 
+                ? 'pages_show_list,pages_read_engagement'
+                : 'pages_show_list,pages_read_engagement,threads_basic,threads_content_publish';
 
             // Construct OAuth URL
             const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
