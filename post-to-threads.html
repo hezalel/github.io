@@ -261,6 +261,11 @@
             <div class="config-title">API Configuration</div>
             
             <div class="input-group">
+                <label for="apiEndpoint">API Endpoint *</label>
+                <input type="text" id="apiEndpoint" placeholder="https://your-project.vercel.app/api/post-to-threads" value="">
+            </div>
+
+            <div class="input-group">
                 <label for="threadsUserId">Threads User ID *</label>
                 <input type="text" id="threadsUserId" placeholder="25737802615825141" value="25737802615825141">
             </div>
@@ -378,11 +383,18 @@
         }
 
         async function postToThreads() {
+            const apiEndpoint = document.getElementById('apiEndpoint').value.trim();
             const userId = document.getElementById('threadsUserId').value.trim();
             const token = document.getElementById('accessToken').value.trim();
             const caption = document.getElementById('caption').value.trim();
 
             // Validation
+            if (!apiEndpoint) {
+                showMessage('Please configure your API Endpoint', 'error');
+                document.getElementById('configSection').style.display = 'block';
+                return;
+            }
+
             if (!userId || !token) {
                 showMessage('Please configure your Threads User ID and Access Token', 'error');
                 document.getElementById('configSection').style.display = 'block';
@@ -398,75 +410,44 @@
             postButton.disabled = true;
 
             try {
-                // Step 1: Upload image to a temporary hosting service
-                showMessage('📤 Uploading image...', 'loading');
+                // Step 1: Get image URL
+                showMessage('📤 Preparing image...', 'loading');
                 
-                const formData = new FormData();
-                formData.append('image', selectedImage);
-
-                // Using imgbb as free image hosting
-                const imgbbResponse = await fetch('https://api.imgbb.com/1/upload?key=YOUR_IMGBB_KEY', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                // For demo, we'll simulate this. In production, you need image hosting
-                // Let's use a placeholder for now
-                showMessage('⚠️ Image hosting setup required. Please add image hosting service.', 'error');
-                showMessage('For now, upload your image to imgur.com or imgbb.com and use the direct link below:', 'error');
-                
-                const manualUrl = prompt('Enter the direct image URL (must be publicly accessible):');
+                const manualUrl = prompt('Enter the direct image URL (must be publicly accessible via HTTPS):\n\nUpload your image to imgur.com or imgbb.com first, then paste the direct link here.');
                 if (!manualUrl) {
                     throw new Error('Image URL required');
                 }
-                imageUrl = manualUrl;
-
-                // Step 2: Create Threads media container
-                showMessage('📝 Creating Threads post...', 'loading');
                 
-                const containerResponse = await fetch(`https://graph.threads.net/v1.0/${userId}/threads`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        media_type: 'IMAGE',
-                        image_url: imageUrl,
-                        text: caption,
-                        access_token: token
-                    })
-                });
-
-                const containerData = await containerResponse.json();
-
-                if (containerData.error) {
-                    throw new Error(containerData.error.message || 'Failed to create media container');
+                if (!manualUrl.startsWith('https://')) {
+                    throw new Error('Image URL must use HTTPS');
                 }
 
-                const creationId = containerData.id;
+                const imageUrl = manualUrl;
 
-                // Step 3: Publish the post
-                showMessage('🚀 Publishing to Threads...', 'loading');
+                // Step 2: Call our Vercel API
+                showMessage('📝 Posting to Threads via API...', 'loading');
                 
-                const publishResponse = await fetch(`https://graph.threads.net/v1.0/${userId}/threads_publish`, {
+                const response = await fetch(apiEndpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        creation_id: creationId,
-                        access_token: token
+                        imageUrl: imageUrl,
+                        caption: caption,
+                        userId: userId,
+                        accessToken: token
                     })
                 });
 
-                const publishData = await publishResponse.json();
+                const data = await response.json();
 
-                if (publishData.error) {
-                    throw new Error(publishData.error.message || 'Failed to publish post');
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || data.message || 'Failed to post to Threads');
                 }
 
                 // Success!
-                showMessage(`✅ Successfully posted to Threads! Post ID: ${publishData.id}`, 'success');
+                showMessage(`✅ ${data.message} Post ID: ${data.postId}`, 'success');
                 
                 // Reset form
                 setTimeout(() => {
