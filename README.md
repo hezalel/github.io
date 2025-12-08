@@ -87,3 +87,4 @@ For inquiries, please visit our [Contact page](https://github.io/contact) or rea
 ---
 
 Made with ❤️ for home decor enthusiasts everywhere
+
